@@ -32,8 +32,8 @@ spec:
               attempt=0
               while [ "$attempt" -lt "$MAX_RETRIES" ]; do
                 status=$(curl -s -o /etc/openclaw/config.json -w "%{http_code}" \
-                  -H "Authorization: Bearer $GATEWAY_TOKEN" \
-                  "${NEXU_API_URL}/api/internal/pools/${POOL_ID}/config")
+                  -H "x-internal-token: $INTERNAL_API_TOKEN" \
+                  "${NEXU_API_URL}/api/internal/pools/${RUNTIME_POOL_ID}/config")
                 if [ "$status" = "200" ]; then
                   echo "Config fetched."
                   exit 0
@@ -50,11 +50,11 @@ spec:
             - secretRef:
                 name: {{ include "nexu.secretName" . }}
           env:
-            - name: POOL_ID
+            - name: RUNTIME_POOL_ID
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "nexu.configMapName" . }}
-                  key: POOL_ID
+                  key: RUNTIME_POOL_ID
                   optional: true
           volumeMounts:
             - name: openclaw-config
@@ -73,16 +73,16 @@ spec:
                 configMapKeyRef:
                   name: {{ include "nexu.configMapName" . }}
                   key: NEXU_API_URL
-            - name: GATEWAY_TOKEN
+            - name: INTERNAL_API_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ include "nexu.secretName" . }}
-                  key: GATEWAY_TOKEN
-            - name: POOL_ID
+                  key: INTERNAL_API_TOKEN
+            - name: RUNTIME_POOL_ID
               valueFrom:
                 configMapKeyRef:
                   name: {{ include "nexu.configMapName" . }}
-                  key: POOL_ID
+                  key: RUNTIME_POOL_ID
                   optional: true
             - name: POD_IP
               valueFrom:
