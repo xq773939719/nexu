@@ -54,10 +54,10 @@ services:
       context: .
       dockerfile: apps/gateway/Dockerfile
     environment:
-      NEXU_API_URL: ${NEXU_API_URL:-http://api:3000}
-      POOL_ID: pool_local_01
-      GATEWAY_TOKEN: ${GATEWAY_TOKEN:-gw-secret-token}
-      POD_IP: ${POD_IP:-127.0.0.1}
+      RUNTIME_API_BASE_URL: ${RUNTIME_API_BASE_URL:-http://api:3000}
+      RUNTIME_POOL_ID: pool_local_01
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-gw-secret-token}
+      RUNTIME_POD_IP: ${RUNTIME_POD_IP:-127.0.0.1}
     ports:
       - "18789:18789"
 

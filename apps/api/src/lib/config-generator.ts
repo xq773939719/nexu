@@ -1,6 +1,7 @@
 import type {
   AgentConfig,
   BindingConfig,
+  DiscordAccountConfig,
   OpenClawConfig,
   SlackAccountConfig,
 } from "@nexu/shared";
@@ -129,6 +130,7 @@ export async function generatePoolConfig(
   });
 
   const slackAccounts: Record<string, SlackAccountConfig> = {};
+  const discordAccounts: Record<string, DiscordAccountConfig> = {};
   const bindingsList: BindingConfig[] = [];
 
   for (const ch of channelsWithBots) {
@@ -160,6 +162,31 @@ export async function generatePoolConfig(
         agentId: ch.botSlug,
         match: {
           channel: "slack",
+          accountId: ch.accountId,
+        },
+      });
+    } else if (ch.channelType === "discord") {
+      const credMap = new Map<string, string>();
+      for (const cred of ch.credentials) {
+        try {
+          credMap.set(cred.credentialType, decrypt(cred.encryptedValue));
+        } catch {
+          credMap.set(cred.credentialType, "");
+        }
+      }
+
+      const botToken = credMap.get("botToken") ?? "";
+
+      discordAccounts[ch.accountId] = {
+        enabled: true,
+        token: botToken,
+        groupPolicy: "open",
+      };
+
+      bindingsList.push({
+        agentId: ch.botSlug,
+        match: {
+          channel: "discord",
           accountId: ch.accountId,
         },
       });
@@ -234,6 +261,14 @@ export async function generatePoolConfig(
       dmPolicy: "open",
       allowFrom: ["*"],
       accounts: slackAccounts,
+    };
+  }
+
+  if (Object.keys(discordAccounts).length > 0) {
+    config.channels.discord = {
+      enabled: true,
+      groupPolicy: "open",
+      accounts: discordAccounts,
     };
   }
 
