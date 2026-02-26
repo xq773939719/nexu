@@ -3,7 +3,7 @@
 本文说明如何在本机启动并联调以下组件：
 
 - `apps/api`（控制面）
-- `apps/runtime-sidecar`（配置同步与心跳）
+- `apps/gateway`（配置同步与心跳）
 - 本地 OpenClaw Gateway 实例（运行面）
 
 目标是验证完整链路：
@@ -138,7 +138,7 @@ export RUNTIME_HEARTBEAT_INTERVAL_MS=5000
 启动 sidecar：
 
 ```bash
-pnpm --filter @nexu/runtime-sidecar dev
+pnpm --filter @nexu/gateway dev
 ```
 
 正常日志应包含：

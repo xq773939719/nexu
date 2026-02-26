@@ -1,8 +1,8 @@
 export function log(message: string, context?: Record<string, unknown>): void {
   if (context) {
-    console.log(`[runtime-sidecar] ${message}`, context);
+    console.log(`[gateway] ${message}`, context);
     return;
   }
 
-  console.log(`[runtime-sidecar] ${message}`);
+  console.log(`[gateway] ${message}`);
 }

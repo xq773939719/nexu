@@ -45,7 +45,7 @@ async function main(): Promise<void> {
     });
   }
 
-  log("starting runtime sidecar", { poolId: env.RUNTIME_POOL_ID });
+  log("starting gateway", { poolId: env.RUNTIME_POOL_ID });
   await waitGatewayReady();
   await registerPoolWithRetry();
   log("pool registered", { poolId: env.RUNTIME_POOL_ID });
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error("[runtime-sidecar] fatal error", {
+  console.error("[gateway] fatal error", {
     error: error instanceof Error ? error.message : "unknown_error",
   });
   process.exitCode = 1;

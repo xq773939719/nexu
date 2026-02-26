@@ -1,6 +1,6 @@
-# Runtime Sidecar
+# Gateway
 
-`runtime-sidecar` is the pool-node worker that keeps OpenClaw config in sync with the control plane.
+`gateway` is the pool-node worker that keeps OpenClaw config in sync with the control plane.
 
 Current integration uses internal HTTP endpoints (not tRPC).
 
@@ -65,7 +65,7 @@ export RUNTIME_POD_IP=127.0.0.1
 3. Start sidecar:
 
 ```bash
-pnpm --filter @nexu/runtime-sidecar dev
+pnpm --filter @nexu/gateway dev
 ```
 
 ## Verify quickly

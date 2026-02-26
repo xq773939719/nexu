@@ -12,7 +12,7 @@ version: v0.1
 
 ## Context
 
-当前 `apps/runtime-sidecar` 已有以下能力：
+当前 `apps/gateway` 已有以下能力：
 
 - 启动前可选检查：基于 gateway 可达性的启动门禁
 - 配置轮询与原子落盘：`/api/internal/pools/{poolId}/config/latest`
@@ -59,7 +59,7 @@ version: v0.1
 ## 总体方案
 
 ```text
-runtime-sidecar
+gateway
   ├─ startup readiness gate (已有)
   ├─ liveness probe loop (新增, 高频)
   ├─ deep health probe loop (新增, 低频)
