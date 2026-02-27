@@ -15,6 +15,7 @@ Internal API endpoints used by sidecar:
 
 - `POST /api/internal/pools/register`
 - `POST /api/internal/pools/heartbeat`
+- `GET /api/internal/pools/{poolId}/config`
 - `GET /api/internal/pools/{poolId}/config/latest`
 
 ## Required env vars

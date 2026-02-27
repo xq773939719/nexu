@@ -153,23 +153,9 @@ export function registerPoolRoutes(app: OpenAPIHono<AppBindings>) {
     const input = c.req.valid("json");
     const now = new Date().toISOString();
 
-    const [existingPool] = await db
-      .select({ id: gatewayPools.id })
-      .from(gatewayPools)
-      .where(eq(gatewayPools.id, input.poolId))
-      .limit(1);
-
-    if (existingPool) {
-      await db
-        .update(gatewayPools)
-        .set({
-          status: input.status,
-          podIp: input.podIp,
-          lastHeartbeat: now,
-        })
-        .where(eq(gatewayPools.id, input.poolId));
-    } else {
-      await db.insert(gatewayPools).values({
+    await db
+      .insert(gatewayPools)
+      .values({
         id: input.poolId,
         poolName: input.poolId,
         poolType: "shared",
@@ -177,8 +163,15 @@ export function registerPoolRoutes(app: OpenAPIHono<AppBindings>) {
         podIp: input.podIp,
         lastHeartbeat: now,
         createdAt: now,
+      })
+      .onConflictDoUpdate({
+        target: gatewayPools.id,
+        set: {
+          status: input.status,
+          podIp: input.podIp,
+          lastHeartbeat: now,
+        },
       });
-    }
 
     return c.json({ ok: true, poolId: input.poolId }, 200);
   });

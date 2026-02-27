@@ -13,7 +13,8 @@ config:
   NODE_ENV: "production"
   WEB_URL: "https://nexu.example.com"
   BETTER_AUTH_URL: "https://api.nexu.example.com"
-  POOL_ID: "pool_local_01"
+  RUNTIME_POOL_ID: "pool_local_01"
+  RUNTIME_MANAGE_OPENCLAW_PROCESS: "true"
 
 secret:
   create: true
@@ -21,6 +22,7 @@ secret:
   DATABASE_URL: "postgresql://nexu:CHANGEME@postgres:5432/nexu"
   BETTER_AUTH_SECRET: "CHANGEME-random-secret"
   ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  INTERNAL_API_TOKEN: "CHANGEME-internal-token"
   GATEWAY_TOKEN: "CHANGEME-gateway-token"
   SLACK_CLIENT_ID: ""
   SLACK_CLIENT_SECRET: ""
@@ -68,11 +70,6 @@ gateway:
     repository: nexu-gateway
     tag: latest
     pullPolicy: IfNotPresent
-  initContainer:
-    image:
-      repository: curlimages/curl
-      tag: latest
-      pullPolicy: IfNotPresent
   service:
     type: ClusterIP
     port: 18789
