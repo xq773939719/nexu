@@ -17,6 +17,7 @@ config:
   DEFAULT_MODEL_ID: "anthropic/claude-sonnet-4"
   RUNTIME_MANAGE_OPENCLAW_PROCESS: "true"
   EMAIL_SENDER: "Nexu <noreply@nexu.io>"
+  COOKIE_DOMAIN: ""
 
 secret:
   create: true
