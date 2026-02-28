@@ -68,6 +68,7 @@ Zod Schema (定义一次)
 - All API responses must use Zod response schemas registered in the OpenAPI route.
 - Config generator output must match `docs/references/openclaw-config-schema.md` exactly — read the "常见坑点" section.
 - Do not use `fetch` directly in the frontend; always use the generated SDK from `apps/web/lib/api`.
+- Whenever you add a new environment variable, update `deploy/helm/nexu/values.yaml` in the same change.
 
 ## Commands
 
