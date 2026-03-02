@@ -1,0 +1,183 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "apps/web/**"
+      - "apps/landing/**"
+      - "packages/shared/**"
+
+  # Cleanup preview worker when PR is closed
+  pull_request_target:
+    types: [closed]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  PNPM_VERSION: "10.26.0"
+  PREVIEW_DOMAIN_SUFFIX: "preview.nexu.io"
+
+jobs:
+  deploy-preview:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate branch slug
+        id: slug
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          # Slugify: lowercase, replace / and _ with -, remove non-alphanumeric except -, trim dashes
+          SLUG=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[\/\_]/-/g' | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+          # Cloudflare Worker names have a 63 char limit
+          SLUG="${SLUG:0:50}"
+          echo "branch_slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "worker_name=nexu-app-preview-${SLUG}" >> "$GITHUB_OUTPUT"
+          echo "preview_hostname=${SLUG}.${{ env.PREVIEW_DOMAIN_SUFFIX }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build web app
+        run: pnpm --filter @nexu/web build
+        env:
+          VITE_PREVIEW: "true"
+          VITE_COMMIT_HASH: ${{ github.sha }}
+          VITE_AUTH_BASE_URL: ${{ vars.VITE_AUTH_BASE_URL }}
+          VITE_WHATSAPP_WA_ME_URL: ${{ vars.VITE_WHATSAPP_WA_ME_URL }}
+          VITE_AMPLITUDE_API_KEY: ${{ secrets.AMPLITUDE_API_KEY }}
+
+      - name: Deploy preview worker
+        uses: cloudflare/wrangler-action@v3
+        id: deploy
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: deploy --name ${{ steps.slug.outputs.worker_name }}
+          workingDirectory: apps/web
+
+      - name: Attach custom domain
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Get zone ID for nexu.io
+          ZONE_ID=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/zones?name=nexu.io" \
+            | jq -r '.result[0].id')
+          echo "Zone ID: $ZONE_ID"
+
+          # Attach custom domain to the worker
+          curl -sf -X PUT \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/domains" \
+            -d "{
+              \"hostname\": \"${{ steps.slug.outputs.preview_hostname }}\",
+              \"service\": \"${{ steps.slug.outputs.worker_name }}\",
+              \"zone_id\": \"$ZONE_ID\",
+              \"environment\": \"production\"
+            }" | jq .
+        continue-on-error: true
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const hostname = '${{ steps.slug.outputs.preview_hostname }}';
+            const previewUrl = `https://${hostname}`;
+            const body = `## Preview Deployment
+
+            | App | URL |
+            |-----|-----|
+            | Web | [${previewUrl}](${previewUrl}) |
+
+            Deployed from commit: \`${context.sha.substring(0, 7)}\``;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('## Preview Deployment')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  cleanup-preview:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate branch slug
+        id: slug
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          SLUG=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[\/\_]/-/g' | sed 's/[^a-z0-9-]//g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
+          SLUG="${SLUG:0:50}"
+          echo "worker_name=nexu-app-preview-${SLUG}" >> "$GITHUB_OUTPUT"
+          echo "preview_hostname=${SLUG}.${{ env.PREVIEW_DOMAIN_SUFFIX }}" >> "$GITHUB_OUTPUT"
+
+      - name: Remove custom domain
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # Find and delete the custom domain
+          DOMAIN_ID=$(curl -sf -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/domains?hostname=${{ steps.slug.outputs.preview_hostname }}" \
+            | jq -r '.result[0].id // empty')
+          if [ -n "$DOMAIN_ID" ]; then
+            curl -sf -X DELETE \
+              -H "Authorization: Bearer $CF_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/domains/$DOMAIN_ID"
+            echo "Removed custom domain: ${{ steps.slug.outputs.preview_hostname }}"
+          else
+            echo "No custom domain found to remove"
+          fi
+        continue-on-error: true
+
+      - name: Delete preview worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
+          command: delete --name ${{ steps.slug.outputs.worker_name }} --force
+        continue-on-error: true
