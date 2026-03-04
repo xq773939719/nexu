@@ -41,13 +41,46 @@ const agentSchema = z.object({
   model: agentModelSchema.optional(),
 });
 
+const compactionMemoryFlushSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    softThresholdTokens: z.number().optional(),
+    prompt: z.string().optional(),
+  })
+  .passthrough();
+
+const compactionSchema = z
+  .object({
+    mode: z.enum(["default", "safeguard"]).optional(),
+    reserveTokens: z.number().optional(),
+    keepRecentTokens: z.number().optional(),
+    reserveTokensFloor: z.number().optional(),
+    maxHistoryShare: z.number().optional(),
+    memoryFlush: compactionMemoryFlushSchema.optional(),
+  })
+  .passthrough();
+
+const memorySearchSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    sources: z.array(z.enum(["memory", "sessions"])).optional(),
+    provider: z
+      .enum(["openai", "gemini", "local", "voyage", "mistral"])
+      .optional(),
+    model: z.string().optional(),
+  })
+  .passthrough();
+
 const agentsConfigSchema = z.object({
   defaults: z
     .object({
       model: z
         .union([z.string(), z.object({ primary: z.string() })])
         .optional(),
+      compaction: compactionSchema.optional(),
+      memorySearch: memorySearchSchema.optional(),
     })
+    .passthrough()
     .optional(),
   list: z.array(agentSchema),
 });

@@ -263,6 +263,14 @@ export async function generatePoolConfig(
     agents: {
       defaults: {
         model: { primary: defaultModelId },
+        compaction: {
+          mode: "safeguard",
+          maxHistoryShare: 0.7,
+          keepRecentTokens: 16000,
+          memoryFlush: {
+            enabled: true,
+          },
+        },
       },
       list: agentList,
     },
