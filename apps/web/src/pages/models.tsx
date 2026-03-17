@@ -564,9 +564,18 @@ function ManagedProviderDetail({ provider }: { provider: ProviderConfig }) {
     setLoginBusy(true);
     setLoginError(null);
     try {
-      const res = await fetch("/api/internal/desktop/cloud-connect", {
+      let res = await fetch("/api/internal/desktop/cloud-connect", {
         method: "POST",
       });
+      // If a stale polling session exists, disconnect and retry once
+      if (res.status === 409) {
+        await fetch("/api/internal/desktop/cloud-disconnect", {
+          method: "POST",
+        }).catch(() => {});
+        res = await fetch("/api/internal/desktop/cloud-connect", {
+          method: "POST",
+        });
+      }
       const data = (await res.json()) as {
         browserUrl?: string;
         error?: string;
@@ -577,9 +586,7 @@ function ManagedProviderDetail({ provider }: { provider: ProviderConfig }) {
         return;
       }
       if (data.browserUrl) {
-        // In Electron, window.open is intercepted by the main process and
-        // opened in the system browser via shell.openExternal().
-        window.open(data.browserUrl, "_blank");
+        window.open(data.browserUrl, "_blank", "noopener,noreferrer");
       }
       // Keep loginBusy=true — polling effect will detect completion.
     } catch {

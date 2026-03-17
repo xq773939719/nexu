@@ -301,6 +301,16 @@ export function registerDesktopLocalRoutes(app: OpenAPIHono<AppBindings>) {
     cfg.selectedModelId = body.modelId;
     fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2));
 
+    // Also update all bots in DB so per-agent model is consistent.
+    // The config generator reads bot.modelId first, falling back to
+    // desktop-config.json only when bot.modelId is null.  Without this
+    // update the DB default ("anthropic/claude-sonnet-4") always wins.
+    try {
+      await db.update(bots).set({ modelId: body.modelId });
+    } catch (err) {
+      logger.error({ message: "default_model_bot_update_failed", error: err });
+    }
+
     // Trigger config snapshot so gateway picks up the change
     try {
       const [pool] = await db

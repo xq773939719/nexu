@@ -201,9 +201,18 @@ export function WelcomePage() {
     setCloudConnecting(true);
     setLoginError(null);
     try {
-      const res = await fetch("/api/internal/desktop/cloud-connect", {
+      let res = await fetch("/api/internal/desktop/cloud-connect", {
         method: "POST",
       });
+      // If a stale polling session exists, disconnect and retry once
+      if (res.status === 409) {
+        await fetch("/api/internal/desktop/cloud-disconnect", {
+          method: "POST",
+        }).catch(() => {});
+        res = await fetch("/api/internal/desktop/cloud-connect", {
+          method: "POST",
+        });
+      }
       const data = (await res.json()) as {
         browserUrl?: string;
         error?: string;
@@ -214,8 +223,7 @@ export function WelcomePage() {
         return;
       }
       if (data.browserUrl) {
-        // In Electron, window.open is intercepted by main process → shell.openExternal()
-        window.open(data.browserUrl, "_blank");
+        window.open(data.browserUrl, "_blank", "noopener,noreferrer");
       }
       // Keep cloudConnecting=true — polling effect will detect completion.
     } catch {
@@ -254,7 +262,7 @@ export function WelcomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0b0d] text-white">
+    <div className="min-h-screen bg-[#0b0b0d] text-white relative">
       <div className="flex min-h-screen flex-col lg:flex-row">
         <BrandRail
           onLogoClick={() => navigate("/")}

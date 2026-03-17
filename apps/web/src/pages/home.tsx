@@ -56,11 +56,31 @@ function formatRelativeTime(
 
 const GITHUB_URL = "https://github.com/refly-ai/nexu";
 
-const CHAT_URLS: Record<string, string> = {
-  feishu: "https://www.feishu.cn/",
-  slack: "https://slack.com/",
-  discord: "https://discord.com/",
-};
+function getChatUrl(
+  channelType: string,
+  appId?: string | null,
+  botUserId?: string | null,
+  accountId?: string,
+): string {
+  switch (channelType) {
+    case "feishu":
+      return appId
+        ? `https://applink.feishu.cn/client/bot/open?appId=${appId}`
+        : "https://www.feishu.cn/";
+    case "slack": {
+      // accountId format: "slack-{appId}-{teamId}"
+      const teamId = accountId?.replace(/^slack-[^-]+-/, "");
+      if (teamId && botUserId) {
+        return `https://app.slack.com/client/${teamId}/${botUserId}`;
+      }
+      return "https://slack.com/";
+    }
+    case "discord":
+      return "https://discord.com/channels/@me";
+    default:
+      return "https://www.feishu.cn/";
+  }
+}
 
 function getChannelShortNames(
   t: (key: string) => string,
@@ -414,11 +434,17 @@ export function HomePage() {
 
   const updateModel = useMutation({
     mutationFn: async (modelId: string) => {
-      await fetch("/api/internal/desktop/default-model", {
+      const toastId = toast.loading("正在切换模型…");
+      const res = await fetch("/api/internal/desktop/default-model", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ modelId }),
       });
+      if (!res.ok) {
+        toast.error("模型切换失败", { id: toastId });
+        throw new Error("Failed to update model");
+      }
+      toast.success("模型已切换", { id: toastId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["desktop-default-model"] });
@@ -449,7 +475,12 @@ export function HomePage() {
   const firstChannelType = firstChannel?.channelType ?? "feishu";
   const chatShortName =
     CHANNEL_SHORT_NAMES[firstChannelType] ?? firstChannelType;
-  const chatUrl = CHAT_URLS[firstChannelType] ?? "https://www.feishu.cn/";
+  const chatUrl = getChatUrl(
+    firstChannelType,
+    firstChannel?.appId,
+    firstChannel?.botUserId,
+    firstChannel?.accountId,
+  );
 
   /* ── Always show full dashboard ── */
   const welcomeMessage = channelsLoading
