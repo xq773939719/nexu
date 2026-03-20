@@ -20,6 +20,7 @@ import {
 } from "../db/schema/index.js";
 import { decrypt } from "./crypto.js";
 import { ServiceError } from "./error.js";
+import { logger } from "./logger.js";
 import { normalizeProviderBaseUrl } from "./provider-base-url.js";
 
 /**
@@ -351,8 +352,15 @@ export async function generatePoolConfig(
       for (const cred of ch.credentials) {
         try {
           credMap.set(cred.credentialType, decrypt(cred.encryptedValue));
-        } catch {
-          credMap.set(cred.credentialType, "");
+        } catch (err) {
+          logger.warn({
+            message: "config_generator_decrypt_failed",
+            scope: "config_generator",
+            channel_id: ch.channelId,
+            channel_type: ch.channelType,
+            credential_type: cred.credentialType,
+            error: String(err),
+          });
         }
       }
 
@@ -396,8 +404,15 @@ export async function generatePoolConfig(
       for (const cred of ch.credentials) {
         try {
           credMap.set(cred.credentialType, decrypt(cred.encryptedValue));
-        } catch {
-          credMap.set(cred.credentialType, "");
+        } catch (err) {
+          logger.warn({
+            message: "config_generator_decrypt_failed",
+            scope: "config_generator",
+            channel_id: ch.channelId,
+            channel_type: ch.channelType,
+            credential_type: cred.credentialType,
+            error: String(err),
+          });
         }
       }
 
@@ -421,8 +436,15 @@ export async function generatePoolConfig(
       for (const cred of ch.credentials) {
         try {
           credMap.set(cred.credentialType, decrypt(cred.encryptedValue));
-        } catch {
-          credMap.set(cred.credentialType, "");
+        } catch (err) {
+          logger.warn({
+            message: "config_generator_decrypt_failed",
+            scope: "config_generator",
+            channel_id: ch.channelId,
+            channel_type: ch.channelType,
+            credential_type: cred.credentialType,
+            error: String(err),
+          });
         }
       }
 
@@ -465,8 +487,8 @@ export async function generatePoolConfig(
     ...new Set(activeBots.map((b) => b.modelId).filter(Boolean) as string[]),
   ];
   const defaultModelId = resolveModelId(
-    activeBots[0]?.modelId ??
-      loadDesktopSelectedModel() ??
+    loadDesktopSelectedModel() ??
+      activeBots[0]?.modelId ??
       process.env.DEFAULT_MODEL_ID ??
       "claude-sonnet-4-5",
   );

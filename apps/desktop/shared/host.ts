@@ -197,7 +197,8 @@ export type RuntimeReasonCode =
   | "delegated_process_detected"
   | "delegated_process_missing"
   | "stdout_line"
-  | "stderr_line";
+  | "stderr_line"
+  | "auto_restart_scheduled";
 
 export type RuntimeLogEntry = {
   id: string;
