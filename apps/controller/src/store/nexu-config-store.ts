@@ -613,6 +613,39 @@ export class NexuConfigStore {
     return channel;
   }
 
+  async connectWechat(input: { accountId: string }): Promise<ChannelResponse> {
+    const bot = await this.getOrCreateDefaultBot();
+    const connectedAt = now();
+    const channel: ChannelResponse = {
+      id: crypto.randomUUID(),
+      botId: bot.id,
+      channelType: "wechat",
+      accountId: input.accountId,
+      status: "connected",
+      teamName: null,
+      appId: null,
+      botUserId: null,
+      createdAt: connectedAt,
+      updatedAt: connectedAt,
+    };
+
+    await this.store.update((config) => ({
+      ...config,
+      channels: [
+        ...config.channels.filter(
+          (existing) =>
+            !(
+              existing.channelType === channel.channelType &&
+              existing.accountId === channel.accountId
+            ),
+        ),
+        channel,
+      ],
+    }));
+
+    return channel;
+  }
+
   async connectFeishu(input: ConnectFeishuInput): Promise<ChannelResponse> {
     const bot = await this.getOrCreateDefaultBot();
     const connectedAt = now();

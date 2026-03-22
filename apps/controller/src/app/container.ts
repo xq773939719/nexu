@@ -1,5 +1,6 @@
 import { GatewayClient } from "../runtime/gateway-client.js";
 import { startHealthLoop } from "../runtime/loops.js";
+import { OpenClawAuthProfilesWriter } from "../runtime/openclaw-auth-profiles-writer.js";
 import { OpenClawConfigWriter } from "../runtime/openclaw-config-writer.js";
 import { OpenClawProcessManager } from "../runtime/openclaw-process.js";
 import { OpenClawRuntimeModelWriter } from "../runtime/openclaw-runtime-model-writer.js";
@@ -64,6 +65,7 @@ export async function createContainer(): Promise<ControllerContainer> {
   const artifactsStore = new ArtifactsStore(env);
   const compiledStore = new CompiledOpenClawStore(env);
   const configWriter = new OpenClawConfigWriter(env);
+  const authProfilesWriter = new OpenClawAuthProfilesWriter();
   const runtimePluginWriter = new OpenClawRuntimePluginWriter(env);
   const runtimeModelWriter = new OpenClawRuntimeModelWriter(env);
   const templateWriter = new WorkspaceTemplateWriter(env);
@@ -87,6 +89,7 @@ export async function createContainer(): Promise<ControllerContainer> {
     configStore,
     compiledStore,
     configWriter,
+    authProfilesWriter,
     runtimePluginWriter,
     runtimeModelWriter,
     templateWriter,
