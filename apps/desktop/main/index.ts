@@ -25,6 +25,8 @@ import { exportDiagnostics } from "./diagnostics-export";
 import {
   registerIpcHandlers,
   setComponentUpdater,
+  setQuitFallback,
+  setQuitHandlerOpts,
   setUpdateManager,
 } from "./ipc";
 import { RuntimeOrchestrator } from "./runtime/daemon-supervisor";
@@ -1088,6 +1090,14 @@ app.whenReady().then(async () => {
     diagnosticsReporter,
     coldStartReady,
   );
+  // Provide orchestrator-mode quit fallback for app:quit IPC when launchd
+  // quit handler is not available (e.g. CI, orchestrator mode).
+  setQuitFallback(() =>
+    gracefulShutdown("ipc-quit").finally(() => {
+      (app as unknown as Record<string, unknown>).__nexuForceQuit = true;
+      app.exit(0);
+    }),
+  );
   const unsubscribeDiagnostics = diagnosticsReporter.start();
   sleepGuard = new SleepGuard({
     powerMonitor,
@@ -1156,7 +1166,7 @@ app.whenReady().then(async () => {
     // Install launchd quit handler regardless of cold-start success/failure
     // so services can always be stopped cleanly on quit.
     if (launchdResult) {
-      installLaunchdQuitHandler({
+      const quitOpts = {
         launchd: launchdResult.launchd,
         labels: launchdResult.labels,
         webServer: launchdResult.webServer,
@@ -1166,7 +1176,9 @@ app.whenReady().then(async () => {
           await diagnosticsReporter?.flushNow().catch(() => undefined);
           flushRuntimeLoggers();
         },
-      });
+      };
+      installLaunchdQuitHandler(quitOpts);
+      setQuitHandlerOpts(quitOpts);
     }
 
     if (app.isPackaged && runtimeConfig.updates.autoUpdateEnabled) {
